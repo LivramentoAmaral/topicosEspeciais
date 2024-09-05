@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Paper, TextField, Button, Typography, Grid } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Paper, TextField, Button, Typography, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Paper as MuiPaper } from '@mui/material';
+import { useSnackbar } from 'notistack';
 
 const PatientRecords = () => {
   const [patient, setPatient] = useState('');
@@ -8,8 +9,11 @@ const PatientRecords = () => {
   const [notes, setNotes] = useState('');
   const [doctor, setDoctor] = useState('');
   const [recordDate, setRecordDate] = useState(new Date());
+  const [records, setRecords] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { enqueueSnackbar } = useSnackbar();
 
-  const handleSaveRecord = () => {
+  const handleSaveRecord = async () => {
     const medicalRecordData = {
       patient,
       recordDate,
@@ -19,15 +23,59 @@ const PatientRecords = () => {
       doctor,
     };
 
-    // Lógica para salvar o prontuário
-    console.log('Prontuário salvo:', medicalRecordData);
-    alert('Prontuário salvo com sucesso!');
+    try {
+      const response = await fetch('/api/records', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(medicalRecordData),
+      });
+
+      if (response.ok) {
+        enqueueSnackbar('Prontuário salvo com sucesso!', { variant: 'success' });
+        setPatient('');
+        setDiagnosis('');
+        setTreatment('');
+        setNotes('');
+        setDoctor('');
+        setRecordDate(new Date());
+        fetchRecords(); // Atualiza a lista de prontuários
+      } else {
+        enqueueSnackbar('Erro ao salvar o prontuário. Tente novamente.', { variant: 'error' });
+      }
+    } catch (error) {
+      enqueueSnackbar('Erro de conexão com o servidor. Tente novamente.', { variant: 'error' });
+    }
   };
 
   const handleEditRecord = () => {
     // Lógica para editar o prontuário
-    alert('Prontuário pronto para edição!');
+    enqueueSnackbar('Prontuário pronto para edição!', { variant: 'info' });
   };
+
+  const fetchRecords = async () => {
+    try {
+      const response = await fetch('/api/records');
+      if (response.ok) {
+        const data = await response.json();
+        setRecords(data);
+      } else {
+        enqueueSnackbar('Erro ao carregar prontuários.', { variant: 'error' });
+      }
+    } catch (error) {
+      enqueueSnackbar('Erro de conexão com o servidor.', { variant: 'error' });
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  const filteredRecords = records.filter(record =>
+    record.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    record.diagnosis.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <Paper style={{ padding: 16 }}>
@@ -94,6 +142,44 @@ const PatientRecords = () => {
           </Button>
         </Grid>
       </Grid>
+
+      <Typography variant="h6" gutterBottom style={{ marginTop: 32 }}>
+        Lista de Prontuários
+      </Typography>
+      <TextField
+        label="Pesquisar"
+        variant="outlined"
+        fullWidth
+        margin="normal"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <TableContainer component={MuiPaper} style={{ marginTop: 16 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Paciente</TableCell>
+              <TableCell>Data</TableCell>
+              <TableCell>Diagnóstico</TableCell>
+              <TableCell>Tratamento</TableCell>
+              <TableCell>Observações</TableCell>
+              <TableCell>Médico</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredRecords.map((record) => (
+              <TableRow key={record._id}>
+                <TableCell>{record.patient}</TableCell>
+                <TableCell>{new Date(record.recordDate).toLocaleDateString()}</TableCell>
+                <TableCell>{record.diagnosis}</TableCell>
+                <TableCell>{record.treatment}</TableCell>
+                <TableCell>{record.notes}</TableCell>
+                <TableCell>{record.doctor}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Paper>
   );
 };
