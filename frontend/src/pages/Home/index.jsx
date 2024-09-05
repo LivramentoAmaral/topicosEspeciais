@@ -11,6 +11,7 @@ import Reports from '../../components/Reports';
 import Settings from '../../components/settings';
 import Sidebar from '../../components/siedbar';
 import themes from '../../themes';
+import AddDoctor from '../../components/AddDoctor';
 
 function HomePage() {
   const [theme, setTheme] = useState('light');
@@ -27,6 +28,8 @@ function HomePage() {
         return <Dashboard />;
       case 'patients':
         return <PatientForm />;
+      case 'doctors':
+        return <AddDoctor />;
       case 'appointments':
         return <AppointmentScheduler />;
       case 'records':

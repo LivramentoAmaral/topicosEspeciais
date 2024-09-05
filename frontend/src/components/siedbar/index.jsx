@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import ReportIcon from '@mui/icons-material/BarChart';
 import SettingsIcon from '@mui/icons-material/Settings';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital'; // Ícone para Médicos
 
 const Sidebar = ({ onSelect }) => {
   return (
@@ -14,7 +15,7 @@ const Sidebar = ({ onSelect }) => {
       <ListItem
         button
         onClick={() => onSelect('dashboard')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <DashboardIcon />
@@ -24,7 +25,7 @@ const Sidebar = ({ onSelect }) => {
       <ListItem
         button
         onClick={() => onSelect('patients')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <PeopleIcon />
@@ -34,7 +35,7 @@ const Sidebar = ({ onSelect }) => {
       <ListItem
         button
         onClick={() => onSelect('appointments')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <ScheduleIcon />
@@ -44,7 +45,7 @@ const Sidebar = ({ onSelect }) => {
       <ListItem
         button
         onClick={() => onSelect('records')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <DescriptionIcon />
@@ -54,7 +55,7 @@ const Sidebar = ({ onSelect }) => {
       <ListItem
         button
         onClick={() => onSelect('inventory')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <InventoryIcon />
@@ -63,8 +64,18 @@ const Sidebar = ({ onSelect }) => {
       </ListItem>
       <ListItem
         button
+        onClick={() => onSelect('doctors')} // Opção para Médicos
+        style={{ cursor: 'pointer' }}
+      >
+        <ListItemIcon>
+          <LocalHospitalIcon />
+        </ListItemIcon>
+        <ListItemText primary="Médicos" />
+      </ListItem>
+      <ListItem
+        button
         onClick={() => onSelect('reports')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <ReportIcon />
@@ -74,7 +85,7 @@ const Sidebar = ({ onSelect }) => {
       <ListItem
         button
         onClick={() => onSelect('settings')}
-        style={{ cursor: 'pointer' }} // Adiciona cursor pointer
+        style={{ cursor: 'pointer' }}
       >
         <ListItemIcon>
           <SettingsIcon />

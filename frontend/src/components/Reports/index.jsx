@@ -22,13 +22,21 @@ ChartJS.register(
 );
 
 const Reports = () => {
+  // Exemplo de dados simulados baseados em diagnósticos
   const data = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'
+      , 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ],
     datasets: [
       {
-        label: 'Consultas',
-        data: [10, 20, 30, 40, 50],
+        label: 'Diagnósticos',
+        data: [15, 25, 35, 45, 55],  // Quantidade de diagnósticos por mês
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
+      },
+      {
+        label: 'Tratamentos Prescritos',
+        data: [10, 20, 25, 35, 40],  // Quantidade de tratamentos prescritos
+        backgroundColor: 'rgba(153, 102, 255, 0.6)',
       },
     ],
   };
@@ -59,7 +67,7 @@ const Reports = () => {
   return (
     <Paper style={{ padding: 16 }}>
       <Typography variant="h6" gutterBottom>
-        Relatórios e Estatísticas
+        Relatórios de Prontuários Médicos
       </Typography>
       <Grid container spacing={2} style={{ marginBottom: 16 }}>
         <Grid item>
@@ -69,6 +77,7 @@ const Reports = () => {
         </Grid>
       </Grid>
 
+      {/* Gráfico de diagnósticos e tratamentos */}
       <Bar data={data} options={options} />
     </Paper>
   );
