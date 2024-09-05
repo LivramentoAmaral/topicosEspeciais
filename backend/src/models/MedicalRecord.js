@@ -1,10 +1,9 @@
-// models/MedicalRecord.js
 const mongoose = require('mongoose');
 
 const MedicalRecordSchema = new mongoose.Schema({
     patient: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient',
+        ref: 'Patient',  // Referencia ao modelo Patient
         required: true
     },
     recordDate: {
@@ -22,7 +21,8 @@ const MedicalRecordSchema = new mongoose.Schema({
         type: String
     },
     doctor: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,  // Referencia ao modelo Doctor
+        ref: 'Doctor',  // Define a referência ao modelo Doctor
         required: true
     }
 });
