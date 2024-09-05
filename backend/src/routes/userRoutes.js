@@ -3,8 +3,7 @@ const { registerUser, loginUser, getUserProfile } = require('../controllers/user
 const { protect } = require('../middlewares/authMiddleware');
 const router = express.Router();
 
-// Rota para registro
-router.post('/register', registerUser);
+router.post('/register/', registerUser);
 
 router.post('/login', loginUser);
 

@@ -1,15 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const doctorController = require('../controllers/doctorController');
+const { protect } = require('../middlewares/authMiddleware');
 
-router.post('/doctors', doctorController.createDoctor);
+router.post('/doctors',protect, doctorController.createDoctor);
 
-router.put('/doctors/:id', doctorController.updateDoctor);
+router.put('/doctors/:id',protect, doctorController.updateDoctor);
 
-router.delete('/doctors/:id', doctorController.deleteDoctor);
+router.delete('/doctors/:id',protect, doctorController.deleteDoctor);
 
-router.get('/doctors/search', doctorController.searchDoctors);
+router.get('/doctors/search',protect, doctorController.searchDoctors);
 
-router.get('/doctors', doctorController.getAllDoctors);
+router.get('/doctors',protect, doctorController.getAllDoctors);
 
 module.exports = router;

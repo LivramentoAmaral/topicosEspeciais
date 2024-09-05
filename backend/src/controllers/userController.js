@@ -12,7 +12,6 @@ exports.registerUser = async (req, res) => {
     const { name, email, password } = req.body;
 
     try {
-        // Verificar se o usuário já existe
         const userExists = await User.findOne({ email });
 
         if (userExists) {
