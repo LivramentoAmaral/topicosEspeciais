@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, ButtonBase, Paper, Grid, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Paper as MuiPaper } from '@mui/material';
+import { TextField, Button, Paper, Grid, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, MenuItem, Select, InputLabel, FormControl, IconButton, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 import { useSnackbar } from 'notistack';
+import { createPatient, getAllPatients, updatePatient, deletePatient } from '../../api/patients'; // Importa as funções
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const PatientForm = () => {
   const [name, setName] = useState('');
@@ -11,19 +14,16 @@ const PatientForm = () => {
   const [medicalHistory, setMedicalHistory] = useState('');
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingPatient, setEditingPatient] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch('/api/patients');
-      if (response.ok) {
-        const data = await response.json();
-        setPatients(data);
-      } else {
-        enqueueSnackbar('Erro ao carregar pacientes.', { variant: 'error' });
-      }
+      const data = await getAllPatients();
+      setPatients(data);
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor.', { variant: 'error' });
+      enqueueSnackbar('Erro ao carregar pacientes.', { variant: 'error' });
     }
   };
 
@@ -34,36 +34,68 @@ const PatientForm = () => {
   const handleSave = async (event) => {
     event.preventDefault();
     try {
-      const response = await fetch('/api/patients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          age,
-          sex,
-          contact,
-          address,
-          medicalHistory,
-        }),
-      });
-
-      if (response.ok) {
-        enqueueSnackbar('Paciente salvo com sucesso!', { variant: 'success' });
-        setName('');
-        setAge('');
-        setSex('');
-        setContact('');
-        setAddress('');
-        setMedicalHistory('');
-        fetchPatients(); // Atualiza a lista de pacientes
+      if (editingPatient) {
+        await updatePatient(editingPatient._id, {
+          name: name,
+          age: age,
+          gender: sex,
+          contact: contact,
+          address: address,
+          medicalHistory: medicalHistory,
+        });
+        enqueueSnackbar('Paciente atualizado com sucesso!', { variant: 'success' });
+        setEditingPatient(null);
       } else {
-        enqueueSnackbar('Erro ao salvar o paciente. Tente novamente.', { variant: 'error' });
+        await createPatient({
+          name: name,
+          age: age,
+          gender: sex,
+          contact: contact,
+          address: address,
+          medicalHistory: medicalHistory,
+        });
+        enqueueSnackbar('Paciente salvo com sucesso!', { variant: 'success' });
       }
+      setName('');
+      setAge('');
+      setSex('');
+      setContact('');
+      setAddress('');
+      setMedicalHistory('');
+      fetchPatients();
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor. Tente novamente.', { variant: 'error' });
+      enqueueSnackbar('Erro ao salvar o paciente. Tente novamente.', { variant: 'error' });
     }
+  };
+
+  const handleEdit = (patient) => {
+    setEditingPatient(patient);
+    setName(patient.name);
+    setAge(patient.age);
+    setSex(patient.gender);
+    setContact(patient.contact);
+    setAddress(patient.address);
+    setMedicalHistory(patient.medicalHistory);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deletePatient(id);
+      enqueueSnackbar('Paciente excluído com sucesso!', { variant: 'success' });
+      fetchPatients();
+    } catch (error) {
+      enqueueSnackbar('Erro ao excluir o paciente. Tente novamente.', { variant: 'error' });
+    }
+  };
+
+  const handleOpenDialog = (id) => {
+    setEditingPatient(patients.find(patient => patient._id === id));
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setEditingPatient(null);
   };
 
   const filteredPatients = patients.filter(patient =>
@@ -100,14 +132,18 @@ const PatientForm = () => {
             />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <TextField
-              label="Sexo"
-              fullWidth
-              variant="outlined"
-              value={sex}
-              onChange={(e) => setSex(e.target.value)}
-              required
-            />
+            <FormControl fullWidth variant="outlined" required>
+              <InputLabel>Sexo</InputLabel>
+              <Select
+                value={sex}
+                onChange={(e) => setSex(e.target.value)}
+                label="Sexo"
+              >
+                <MenuItem value="Masculino">Masculino</MenuItem>
+                <MenuItem value="Feminino">Feminino</MenuItem>
+                <MenuItem value="Outro">Outro</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
@@ -141,19 +177,15 @@ const PatientForm = () => {
               required
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <ButtonBase
-              sx={{
-                backgroundColor: '#1976d2',
-                color: 'white',
-                padding: '10px 20px',
-                borderRadius: '4px',
-                width: '100%',
-              }}
+          <Grid item xs={12}>
+            <Button
+              variant="contained"
+              color="primary"
               type="submit"
+              fullWidth
             >
-              Salvar
-            </ButtonBase>
+              {editingPatient ? 'Atualizar' : 'Salvar'}
+            </Button>
           </Grid>
         </Grid>
       </form>
@@ -169,7 +201,7 @@ const PatientForm = () => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <TableContainer component={MuiPaper} style={{ marginTop: 16 }}>
+      <TableContainer component={Paper} style={{ marginTop: 16 }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -179,6 +211,7 @@ const PatientForm = () => {
               <TableCell>Contato</TableCell>
               <TableCell>Endereço</TableCell>
               <TableCell>Histórico Médico</TableCell>
+              <TableCell>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -186,15 +219,47 @@ const PatientForm = () => {
               <TableRow key={patient._id}>
                 <TableCell>{patient.name}</TableCell>
                 <TableCell>{patient.age}</TableCell>
-                <TableCell>{patient.sex}</TableCell>
+                <TableCell>{patient.gender}</TableCell>
                 <TableCell>{patient.contact}</TableCell>
                 <TableCell>{patient.address}</TableCell>
                 <TableCell>{patient.medicalHistory}</TableCell>
+                <TableCell>
+                  <IconButton color="primary" onClick={() => handleEdit(patient)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton color="secondary" onClick={() => handleOpenDialog(patient._id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+      >
+        <DialogTitle>Confirmar Exclusão</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">Tem certeza de que deseja excluir este paciente?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              handleDelete(editingPatient._id);
+              handleCloseDialog();
+            }}
+            color="secondary"
+          >
+            Excluir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

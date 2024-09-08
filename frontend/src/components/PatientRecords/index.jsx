@@ -1,81 +1,158 @@
 import React, { useState, useEffect } from 'react';
-import { Paper, TextField, Button, Typography, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Paper as MuiPaper } from '@mui/material';
+import {
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Autocomplete,
+} from '@mui/material';
 import { useSnackbar } from 'notistack';
+import {
+  createMedicalRecord,
+  updateMedicalRecord,
+  getAllMedicalRecords,
+  deleteMedicalRecord,
+} from '../../api/PatientsRecords';
+import { getAllPatients } from '../../api/patients';
+import { getAllDoctors } from '../../api/doctor';
+import Swal from 'sweetalert2';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 
 const PatientRecords = () => {
-  const [patient, setPatient] = useState('');
+  const [patient, setPatient] = useState(null);
   const [diagnosis, setDiagnosis] = useState('');
   const [treatment, setTreatment] = useState('');
   const [notes, setNotes] = useState('');
-  const [doctor, setDoctor] = useState('');
+  const [doctor, setDoctor] = useState(null);
   const [recordDate, setRecordDate] = useState(new Date());
   const [records, setRecords] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [editingRecordId, setEditingRecordId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { enqueueSnackbar } = useSnackbar();
 
   const handleSaveRecord = async () => {
     const medicalRecordData = {
-      patient,
+      patient: patient ? patient._id : '',
       recordDate,
       diagnosis,
       treatment,
       notes,
-      doctor,
+      doctor: doctor ? doctor._id : '',
     };
 
     try {
-      const response = await fetch('/api/records', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(medicalRecordData),
-      });
-
-      if (response.ok) {
-        enqueueSnackbar('Prontuário salvo com sucesso!', { variant: 'success' });
-        setPatient('');
-        setDiagnosis('');
-        setTreatment('');
-        setNotes('');
-        setDoctor('');
-        setRecordDate(new Date());
-        fetchRecords(); // Atualiza a lista de prontuários
+      if (editingRecordId) {
+        await updateMedicalRecord(editingRecordId, medicalRecordData);
+        enqueueSnackbar('Prontuário atualizado com sucesso!', { variant: 'success' });
       } else {
-        enqueueSnackbar('Erro ao salvar o prontuário. Tente novamente.', { variant: 'error' });
+        await createMedicalRecord(medicalRecordData);
+        enqueueSnackbar('Prontuário salvo com sucesso!', { variant: 'success' });
       }
+
+      resetForm();
+      fetchRecords();
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor. Tente novamente.', { variant: 'error' });
+      enqueueSnackbar('Erro ao salvar o prontuário. Tente novamente.', { variant: 'error' });
     }
   };
 
-  const handleEditRecord = () => {
-    // Lógica para editar o prontuário
-    enqueueSnackbar('Prontuário pronto para edição!', { variant: 'info' });
+  const handleEditRecord = (record) => {
+    setPatient(patients.find(p => p._id === (record.patient ? record.patient._id : '')) || null);
+    setDiagnosis(record.diagnosis);
+    setTreatment(record.treatment);
+    setNotes(record.notes);
+    setDoctor(doctors.find(d => d._id === (record.doctor ? record.doctor._id : '')) || null);
+    setRecordDate(new Date(record.recordDate));
+    setEditingRecordId(record._id);
+  };
+
+  const handleDeleteRecord = async (id) => {
+    try {
+      Swal.fire({
+        title: 'Tem certeza?',
+        text: 'Esta ação não poderá ser revertida!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, excluir!',
+        cancelButtonText: 'Cancelar',
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await deleteMedicalRecord(id);
+          enqueueSnackbar('Prontuário excluído com sucesso!', { variant: 'success' });
+          fetchRecords();
+        }
+      });
+
+    } catch (error) {
+      enqueueSnackbar('Erro ao excluir o prontuário. Tente novamente.', { variant: 'error' });
+    }
   };
 
   const fetchRecords = async () => {
     try {
-      const response = await fetch('/api/records');
-      if (response.ok) {
-        const data = await response.json();
-        setRecords(data);
-      } else {
-        enqueueSnackbar('Erro ao carregar prontuários.', { variant: 'error' });
-      }
+      const data = await getAllMedicalRecords();
+      setRecords(data);
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor.', { variant: 'error' });
+      enqueueSnackbar('Erro ao carregar prontuários.', { variant: 'error' });
     }
+  };
+
+  const fetchPatients = async () => {
+    try {
+      const data = await getAllPatients();
+      setPatients(data);
+    } catch (error) {
+      enqueueSnackbar('Erro ao carregar pacientes.', { variant: 'error' });
+    }
+  };
+
+  const fetchDoctors = async () => {
+    try {
+      const data = await getAllDoctors();
+      setDoctors(data);
+    } catch (error) {
+      enqueueSnackbar('Erro ao carregar médicos.', { variant: 'error' });
+    }
+  };
+
+  const resetForm = () => {
+    setPatient(null);
+    setDiagnosis('');
+    setTreatment('');
+    setNotes('');
+    setDoctor(null);
+    setRecordDate(new Date());
+    setEditingRecordId(null);
   };
 
   useEffect(() => {
     fetchRecords();
+    fetchPatients();
+    fetchDoctors();
   }, []);
 
-  const filteredRecords = records.filter(record =>
-    record.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.diagnosis.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRecords = records.filter(record => {
+    const patientObject = patients.find(p => p._id === (record.patient ? record.patient._id : ''));
+    const doctorObject = doctors.find(d => d._id === (record.doctor ? record.doctor._id : ''));
+    const patientName = patientObject ? patientObject.name : 'Desconhecido';
+    const doctorName = doctorObject ? doctorObject.name : 'Desconhecido';
+
+    return (
+      patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.diagnosis.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <Paper style={{ padding: 16 }}>
@@ -83,13 +160,20 @@ const PatientRecords = () => {
         Prontuário Eletrônico
       </Typography>
 
-      <TextField
-        label="Paciente"
+      <Autocomplete
+        options={patients}
+        getOptionLabel={(option) => option.name || ''}
         value={patient}
-        onChange={(e) => setPatient(e.target.value)}
-        fullWidth
-        variant="outlined"
-        style={{ marginBottom: 16 }}
+        onChange={(event, newValue) => setPatient(newValue)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Paciente"
+            variant="outlined"
+            fullWidth
+            style={{ marginBottom: 16 }}
+          />
+        )}
       />
 
       <TextField
@@ -121,24 +205,31 @@ const PatientRecords = () => {
         style={{ marginBottom: 16 }}
       />
 
-      <TextField
-        label="Médico"
+      <Autocomplete
+        options={doctors}
+        getOptionLabel={(option) => option.name || ''}
         value={doctor}
-        onChange={(e) => setDoctor(e.target.value)}
-        fullWidth
-        variant="outlined"
-        style={{ marginBottom: 16 }}
+        onChange={(event, newValue) => setDoctor(newValue)}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Médico"
+            variant="outlined"
+            fullWidth
+            style={{ marginBottom: 16 }}
+          />
+        )}
       />
 
       <Grid container spacing={2} style={{ marginTop: 16 }}>
         <Grid item>
           <Button variant="contained" color="primary" onClick={handleSaveRecord}>
-            Salvar Prontuário
+            {editingRecordId ? 'Atualizar Prontuário' : 'Salvar Prontuário'}
           </Button>
         </Grid>
         <Grid item>
-          <Button variant="outlined" color="secondary" onClick={handleEditRecord}>
-            Editar Prontuário
+          <Button variant="outlined" color="secondary" onClick={resetForm}>
+            Limpar Formulário
           </Button>
         </Grid>
       </Grid>
@@ -154,7 +245,7 @@ const PatientRecords = () => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
-      <TableContainer component={MuiPaper} style={{ marginTop: 16 }}>
+      <TableContainer component={Paper} style={{ marginTop: 16 }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -164,19 +255,40 @@ const PatientRecords = () => {
               <TableCell>Tratamento</TableCell>
               <TableCell>Observações</TableCell>
               <TableCell>Médico</TableCell>
+              <TableCell>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRecords.map((record) => (
-              <TableRow key={record._id}>
-                <TableCell>{record.patient}</TableCell>
-                <TableCell>{new Date(record.recordDate).toLocaleDateString()}</TableCell>
-                <TableCell>{record.diagnosis}</TableCell>
-                <TableCell>{record.treatment}</TableCell>
-                <TableCell>{record.notes}</TableCell>
-                <TableCell>{record.doctor}</TableCell>
-              </TableRow>
-            ))}
+            {filteredRecords.map((record) => {
+              const patientObject = patients.find(p => p._id === (record.patient ? record.patient._id : ''));
+              const doctorObject = doctors.find(d => d._id === (record.doctor ? record.doctor._id : ''));
+              const patientName = patientObject ? patientObject.name : 'Desconhecido';
+              const doctorName = doctorObject ? doctorObject.name : 'Desconhecido';
+
+              return (
+                <TableRow key={record._id}>
+                  <TableCell>{patientName}</TableCell>
+                  <TableCell>{new Date(record.recordDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{record.diagnosis}</TableCell>
+                  <TableCell>{record.treatment}</TableCell>
+                  <TableCell>{record.notes}</TableCell>
+                  <TableCell>{doctorName}</TableCell>
+                  <TableCell>
+                    <Button onClick={() => handleEditRecord(record)}>
+                      <EditIcon />
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => handleDeleteRecord(record._id)}
+                    >
+                      <DeleteIcon />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

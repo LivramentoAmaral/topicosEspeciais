@@ -12,7 +12,8 @@ const PatientSchema = new mongoose.Schema({
     },
     gender: {
         type: String,
-        enum: ['Male', 'Female', 'Other'],
+        enum: ['Masculino', 'Feminino', 'Outro'],
+        default: 'Outro',
         required: true
     },
     contact: {
@@ -24,7 +25,7 @@ const PatientSchema = new mongoose.Schema({
         required: true
     },
     medicalHistory: {
-        type: String, // Pode ser um resumo textual do histórico médico
+        type: String,
         required: true
     },
     createdAt: {
@@ -32,6 +33,8 @@ const PatientSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+
+
 
 const Patient = mongoose.model('Patient', PatientSchema);
 module.exports = Patient;

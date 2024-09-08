@@ -1,27 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { TextField, Button, Typography, Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { useSnackbar } from 'notistack'; // Biblioteca para exibir mensagens de feedback
+import { createDoctor, updateDoctor, deleteDoctor, getAllDoctors, searchDoctors } from '../../api/doctor'; // Funções da API para médicos
 
-const AddDoctor = () => {
+const DoctorManager = () => {
   const [name, setName] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [contact, setContact] = useState('');
   const [workingHours, setWorkingHours] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingDoctor, setEditingDoctor] = useState(null); // Para edição
   const { enqueueSnackbar } = useSnackbar();
 
   const fetchDoctors = async () => {
     try {
-      const response = await fetch('/api/doctors');
-      if (response.ok) {
-        const data = await response.json();
-        setDoctors(data);
-      } else {
-        enqueueSnackbar('Erro ao carregar médicos.', { variant: 'error' });
-      }
+      const data = await getAllDoctors();
+      setDoctors(data);
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor.', { variant: 'error' });
+      enqueueSnackbar('Erro ao carregar a lista de médicos.', { variant: 'error' });
     }
   };
 
@@ -31,45 +28,63 @@ const AddDoctor = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const doctorData = { name, specialty, contact, workingHours };
 
     try {
-      const response = await fetch('/api/doctors', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          specialty,
-          contact,
-          workingHours,
-        }),
-      });
-
-      if (response.ok) {
-        enqueueSnackbar('Médico cadastrado com sucesso!', { variant: 'success' });
-        setName('');
-        setSpecialty('');
-        setContact('');
-        setWorkingHours('');
-        fetchDoctors(); // Atualiza a lista de médicos
+      if (editingDoctor) {
+        await updateDoctor(editingDoctor._id, doctorData);
+        enqueueSnackbar('Médico atualizado com sucesso!', { variant: 'success' });
       } else {
-        enqueueSnackbar('Erro ao cadastrar o médico. Tente novamente.', { variant: 'error' });
+        await createDoctor(doctorData);
+        enqueueSnackbar('Médico cadastrado com sucesso!', { variant: 'success' });
       }
+
+      // Limpar os campos
+      setName('');
+      setSpecialty('');
+      setContact('');
+      setWorkingHours('');
+      setEditingDoctor(null);
+      fetchDoctors();
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor. Tente novamente.', { variant: 'error' });
+      enqueueSnackbar(`Erro ao salvar o médico: ${error}`, { variant: 'error' });
     }
   };
 
-  const filteredDoctors = doctors.filter(doctor =>
-    doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleEdit = (doctor) => {
+    setName(doctor.name);
+    setSpecialty(doctor.specialty);
+    setContact(doctor.contact);
+    setWorkingHours(doctor.workingHours);
+    setEditingDoctor(doctor);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoctor(id);
+      enqueueSnackbar('Médico deletado com sucesso!', { variant: 'success' });
+      fetchDoctors();
+    } catch (error) {
+      enqueueSnackbar(`Erro ao deletar o médico: ${error}`, { variant: 'error' });
+    }
+  };
+
+  const handleSearch = async (event) => {
+    const query = event.target.value;
+    setSearchTerm(query);
+    
+    try {
+      const data = query.length > 0 ? await searchDoctors({ query }) : await getAllDoctors();
+      setDoctors(data);
+    } catch (error) {
+      enqueueSnackbar('Erro ao buscar médicos.', { variant: 'error' });
+    }
+  };
 
   return (
     <Container>
       <Typography variant="h4" gutterBottom>
-        Cadastro de Médico
+        {editingDoctor ? 'Editar Médico' : 'Cadastro de Médicos'}
       </Typography>
       <form onSubmit={handleSubmit}>
         <TextField
@@ -114,10 +129,10 @@ const AddDoctor = () => {
           color="primary"
           style={{ marginTop: 16 }}
         >
-          Cadastrar
+          {editingDoctor ? 'Atualizar Médico' : 'Cadastrar Médico'}
         </Button>
       </form>
-      
+
       <Typography variant="h6" gutterBottom style={{ marginTop: 32 }}>
         Lista de Médicos
       </Typography>
@@ -127,7 +142,7 @@ const AddDoctor = () => {
         fullWidth
         margin="normal"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={handleSearch}
       />
       <TableContainer component={Paper} style={{ marginTop: 16 }}>
         <Table>
@@ -137,15 +152,33 @@ const AddDoctor = () => {
               <TableCell>Especialidade</TableCell>
               <TableCell>Contato</TableCell>
               <TableCell>Horário de Trabalho</TableCell>
+              <TableCell>Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredDoctors.map((doctor) => (
+            {doctors.map((doctor) => (
               <TableRow key={doctor._id}>
                 <TableCell>{doctor.name}</TableCell>
                 <TableCell>{doctor.specialty}</TableCell>
                 <TableCell>{doctor.contact}</TableCell>
                 <TableCell>{doctor.workingHours}</TableCell>
+                <TableCell>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => handleEdit(doctor)}
+                    style={{ marginRight: 8 }}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={() => handleDelete(doctor._id)}
+                  >
+                    Excluir
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -155,4 +188,4 @@ const AddDoctor = () => {
   );
 };
 
-export default AddDoctor;
+export default DoctorManager;
