@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TextField, Button, Typography, Container, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
 import { useSnackbar } from 'notistack'; // Biblioteca para exibir mensagens de feedback
 import { createDoctor, updateDoctor, deleteDoctor, getAllDoctors, searchDoctors } from '../../api/doctor'; // Funções da API para médicos
+import Swal from 'sweetalert2'; // Biblioteca para exibir alertas
 
 const DoctorManager = () => {
   const [name, setName] = useState('');
@@ -61,9 +62,21 @@ const DoctorManager = () => {
 
   const handleDelete = async (id) => {
     try {
-      await deleteDoctor(id);
-      enqueueSnackbar('Médico deletado com sucesso!', { variant: 'success' });
-      fetchDoctors();
+      Swal.fire({
+        title: 'Tem certeza?',
+        text: 'Essa ação não pode ser desfeita.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, deletar!',
+        cancelButtonText: 'Cancelar'
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+
+          await deleteDoctor(id);
+          fetchDoctors();
+          enqueueSnackbar('Médico deletado com sucesso!', { variant: 'success' });
+        }
+      });
     } catch (error) {
       enqueueSnackbar(`Erro ao deletar o médico: ${error}`, { variant: 'error' });
     }
@@ -72,7 +85,7 @@ const DoctorManager = () => {
   const handleSearch = async (event) => {
     const query = event.target.value;
     setSearchTerm(query);
-    
+
     try {
       const data = query.length > 0 ? await searchDoctors({ query }) : await getAllDoctors();
       setDoctors(data);

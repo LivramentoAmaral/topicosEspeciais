@@ -16,7 +16,8 @@ const AppointmentSchema = new mongoose.Schema({
         required: true
     },
     doctor: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref:'Doctor',
         required: true
     },
     reason: {
@@ -25,8 +26,8 @@ const AppointmentSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Agendado', 'comcluido', 'cancelado'],
-        default: 'Agendado'
+        enum: ['Agendada', 'concluída', 'cancelada'],
+        default: 'Agendada'
     },
     createdAt: {
         type: Date,

@@ -1,78 +1,155 @@
 import React, { useState, useEffect } from 'react';
-import { Paper, Grid, TextField, Button, MenuItem, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Paper as MuiPaper } from '@mui/material';
+import {
+  Paper,
+  Grid,
+  TextField,
+  Button,
+  MenuItem,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Autocomplete,
+} from '@mui/material';
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useSnackbar } from 'notistack';
+import { createAppointment, getAllAppointments, updateAppointment, deleteAppointment } from '../../api/AppointmentScheduler'; 
+import { getAllPatients } from '../../api/patients'; // Função para buscar pacientes
+import { getAllDoctors } from '../../api/doctor'; // Função para buscar médicos
+import Swal from 'sweetalert2';
 
 const AppointmentScheduler = () => {
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
-  const [patient, setPatient] = useState('');
-  const [doctor, setDoctor] = useState('');
+  const [patient, setPatient] = useState(null);
+  const [doctor, setDoctor] = useState(null);
   const [reason, setReason] = useState('');
-  const [status, setStatus] = useState('Scheduled');
+  const [status, setStatus] = useState('Agendada');
   const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingAppointmentId, setEditingAppointmentId] = useState(null); // Estado para armazenar o ID da consulta em edição
   const { enqueueSnackbar } = useSnackbar();
 
+  // Função para buscar consultas
+  const fetchAppointments = async () => {
+    try {
+      const data = await getAllAppointments();
+      setAppointments(data);
+    } catch (error) {
+      enqueueSnackbar('Erro ao carregar consultas.', { variant: 'error' });
+    }
+  };
+
+  // Função para buscar pacientes
+  const fetchPatients = async () => {
+    try {
+      const data = await getAllPatients();
+      setPatients(data);
+    } catch (error) {
+      enqueueSnackbar('Erro ao carregar pacientes.', { variant: 'error' });
+    }
+  };
+
+  // Função para buscar médicos
+  const fetchDoctors = async () => {
+    try {
+      const data = await getAllDoctors();
+      setDoctors(data);
+    } catch (error) {
+      enqueueSnackbar('Erro ao carregar médicos.', { variant: 'error' });
+    }
+  };
+
+  // Carrega pacientes, médicos e consultas quando o componente é montado
+  useEffect(() => {
+    fetchAppointments();
+    fetchPatients();
+    fetchDoctors();
+  }, []);
+
+  // Função para agendar ou atualizar consulta
   const handleSchedule = async () => {
     const appointmentData = {
-      patient,
+      patient: patient ? patient._id : '',
+      doctor: doctor ? doctor._id : '',
       date,
       time,
-      doctor,
       reason,
       status,
     };
 
     try {
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(appointmentData),
-      });
-
-      if (response.ok) {
+      if (editingAppointmentId) {
+        await updateAppointment(editingAppointmentId, appointmentData);
+        enqueueSnackbar('Consulta atualizada com sucesso!', { variant: 'success' });
+      } else {
+        await createAppointment(appointmentData);
         enqueueSnackbar('Consulta agendada com sucesso!', { variant: 'success' });
-        setDate(null);
-        setTime(null);
-        setPatient('');
-        setDoctor('');
-        setReason('');
-        setStatus('Scheduled');
-        fetchAppointments(); // Atualiza a lista de consultas
-      } else {
-        enqueueSnackbar('Erro ao agendar a consulta. Tente novamente.', { variant: 'error' });
       }
+
+      // Limpa o formulário
+      setDate(null);
+      setTime(null);
+      setPatient(null);
+      setDoctor(null);
+      setReason('');
+      setStatus('Agendada');
+      setEditingAppointmentId(null); // Limpa o ID de edição
+      fetchAppointments();
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor. Tente novamente.', { variant: 'error' });
+      enqueueSnackbar('Erro ao agendar/atualizar a consulta. Tente novamente.', { variant: 'error' });
     }
   };
 
-  const fetchAppointments = async () => {
+  // Função para editar consulta
+  const handleEdit = (appointment) => {
+    setDate(new Date(appointment.date));
+    setTime(appointment.time);
+    setPatient(patients.find(p => p._id === appointment.patient._id));
+    setDoctor(doctors.find(d => d._id === appointment.doctor));
+    setReason(appointment.reason);
+    setStatus(appointment.status);
+    setEditingAppointmentId(appointment._id); // Armazena o ID da consulta em edição
+  };
+
+  const handleDelete = async (id) => {
     try {
-      const response = await fetch('/api/appointments');
-      if (response.ok) {
-        const data = await response.json();
-        setAppointments(data);
-      } else {
-        enqueueSnackbar('Erro ao carregar consultas.', { variant: 'error' });
-      }
+      Swal.fire({
+        title: 'Tem certeza?',
+        text: 'Esta ação não poderá ser desfeita.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar',
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await deleteAppointment(id);
+          enqueueSnackbar('Consulta excluída com sucesso!', { variant: 'success' });
+          fetchAppointments(); 
+        }
+      });
     } catch (error) {
-      enqueueSnackbar('Erro de conexão com o servidor.', { variant: 'error' });
+      enqueueSnackbar('Erro ao excluir a consulta.', { variant: 'error' });
     }
   };
 
-  useEffect(() => {
-    fetchAppointments();
-  }, []);
+  const filteredAppointments = appointments.filter((appointment) => {
+    const patientObject = patients.find(p => p._id === appointment.patient);
+    const doctorObject = doctors.find(d => d._id === appointment.doctor);
+    const patientName = patientObject ? patientObject.name : 'Desconhecido';
+    const doctorName = doctorObject ? doctorObject.name : 'Desconhecido';
 
-  const filteredAppointments = appointments.filter(appointment =>
-    appointment.patient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    appointment.doctor.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    return (
+      patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doctorName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -97,24 +174,33 @@ const AppointmentScheduler = () => {
               renderInput={(params) => <TextField {...params} fullWidth />}
             />
           </Grid>
+
+          {/* Campo de autocomplete para selecionar pacientes */}
           <Grid item xs={12}>
-            <TextField
-              label="Paciente"
+            <Autocomplete
+              options={patients}
+              getOptionLabel={(option) => option.name || ''}
               value={patient}
-              onChange={(e) => setPatient(e.target.value)}
-              fullWidth
-              variant="outlined"
+              onChange={(event, newValue) => setPatient(newValue)}
+              renderInput={(params) => (
+                <TextField {...params} label="Paciente" variant="outlined" fullWidth />
+              )}
             />
           </Grid>
+
+          {/* Campo de autocomplete para selecionar médicos */}
           <Grid item xs={12}>
-            <TextField
-              label="Médico"
+            <Autocomplete
+              options={doctors}
+              getOptionLabel={(option) => option.name || ''}
               value={doctor}
-              onChange={(e) => setDoctor(e.target.value)}
-              fullWidth
-              variant="outlined"
+              onChange={(event, newValue) => setDoctor(newValue)}
+              renderInput={(params) => (
+                <TextField {...params} label="Médico" variant="outlined" fullWidth />
+              )}
             />
           </Grid>
+
           <Grid item xs={12}>
             <TextField
               label="Motivo da Consulta"
@@ -131,59 +217,77 @@ const AppointmentScheduler = () => {
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               fullWidth
-              variant="outlined"
             >
-              <MenuItem value="Scheduled">Agendada</MenuItem>
-              <MenuItem value="Completed">Concluída</MenuItem>
-              <MenuItem value="Cancelled">Cancelada</MenuItem>
+              <MenuItem value="Agendada">Agendada</MenuItem>
+              <MenuItem value="Concluída">Concluída</MenuItem>
+              <MenuItem value="Cancelada">Cancelada</MenuItem>
             </TextField>
           </Grid>
           <Grid item xs={12}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSchedule}
-              fullWidth
-            >
-              Agendar Consulta
+            <Button variant="contained" color="primary" onClick={handleSchedule}>
+              {editingAppointmentId ? 'Atualizar Consulta' : 'Agendar Consulta'}
             </Button>
           </Grid>
         </Grid>
 
-        <Typography variant="h6" gutterBottom style={{ marginTop: 32 }}>
-          Lista de Consultas
-        </Typography>
+        {/* Campo de pesquisa */}
         <TextField
-          label="Pesquisar"
+          label="Pesquisar Consulta"
           variant="outlined"
           fullWidth
           margin="normal"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <TableContainer component={MuiPaper} style={{ marginTop: 16 }}>
+
+        {/* Tabela de consultas */}
+        <TableContainer component={Paper} style={{ marginTop: 16 }}>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Paciente</TableCell>
+                <TableCell>Médico</TableCell>
                 <TableCell>Data</TableCell>
                 <TableCell>Hora</TableCell>
-                <TableCell>Médico</TableCell>
                 <TableCell>Motivo</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredAppointments.map((appointment) => (
-                <TableRow key={appointment._id}>
-                  <TableCell>{appointment.patient}</TableCell>
-                  <TableCell>{new Date(appointment.date).toLocaleDateString()}</TableCell>
-                  <TableCell>{appointment.time}</TableCell>
-                  <TableCell>{appointment.doctor}</TableCell>
-                  <TableCell>{appointment.reason}</TableCell>
-                  <TableCell>{appointment.status}</TableCell>
-                </TableRow>
-              ))}
+              {filteredAppointments.map((appointment) => {
+                const patientObject = patients.find(p => p._id === (appointment.patient? appointment.patient._id : ''));
+                const doctorObject = doctors.find(d => d._id === appointment.doctor);
+                const formattedTime = appointment.time ? new Date(appointment.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Desconhecido';
+                
+                return (
+                  <TableRow key={appointment._id}>
+                    <TableCell>{patientObject ? patientObject.name : 'Desconhecido'}</TableCell>
+                    <TableCell>{doctorObject ? doctorObject.name : 'Desconhecido'}</TableCell>
+                    <TableCell>{new Date(appointment.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{formattedTime}</TableCell>
+                    <TableCell>{appointment.reason}</TableCell>
+                    <TableCell>{appointment.status}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleEdit(appointment)}
+                        style={{ marginRight: 8 }}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => handleDelete(appointment._id)}
+                      >
+                        Excluir
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
